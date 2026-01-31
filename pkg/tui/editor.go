@@ -2,8 +2,10 @@ package tui
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -13,14 +15,17 @@ type EditorMode int
 const (
 	ModeNormal EditorMode = iota
 	ModeInsert
+	ModeCommand
 )
 
 type EditorModel struct {
-	textarea textarea.Model
-	mode     EditorMode
-	width    int
-	height   int
-	filename string
+	textarea  textarea.Model
+	textinput textinput.Model
+	mode      EditorMode
+	width     int
+	height    int
+	filename  string
+	msg       string // For status messages like "Saved!"
 }
 
 func NewEditor() EditorModel {
@@ -30,18 +35,26 @@ func NewEditor() EditorModel {
 	ta.CharLimit = 0
 	ta.ShowLineNumbers = true
 
+	ti := textinput.New()
+	ti.Prompt = ":"
+	ti.Placeholder = ""
+	ti.CharLimit = 156
+	ti.Width = 50
+
 	return EditorModel{
-		textarea: ta,
-		mode:     ModeNormal,
+		textarea:  ta,
+		textinput: ti,
+		mode:      ModeNormal,
 	}
 }
 
 func (m EditorModel) Init() tea.Cmd {
-	return textarea.Blink
+	return tea.Batch(textarea.Blink, textinput.Blink)
 }
 
 func (m EditorModel) Update(msg tea.Msg) (EditorModel, tea.Cmd) {
 	var cmd tea.Cmd
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -50,45 +63,102 @@ func (m EditorModel) Update(msg tea.Msg) (EditorModel, tea.Cmd) {
 			switch msg.String() {
 			case "i":
 				m.mode = ModeInsert
-				// Re-focus to enable typing
 				m.textarea.Focus()
-				// Navigation in normal mode could be mapped here if we supported custom viewport nav
-				// For now, bubbles/textarea handles navigation even when focused, but we want to intercept interactions
+				m.msg = ""
+			case ":":
+				m.mode = ModeCommand
+				m.textinput.Focus()
+				m.textinput.SetValue("")
+				m.msg = ""
 			}
 		case ModeInsert:
 			switch msg.String() {
 			case "esc":
 				m.mode = ModeNormal
 				m.textarea.Blur()
+				m.msg = ""
 			default:
 				m.textarea, cmd = m.textarea.Update(msg)
+				cmds = append(cmds, cmd)
+			}
+		case ModeCommand:
+			switch msg.String() {
+			case "esc":
+				m.mode = ModeNormal
+				m.textinput.Blur()
+				m.textarea.Focus() // Return focus to textarea (but in normal mode logic)
+				m.msg = ""
+			case "enter":
+				val := m.textinput.Value()
+				m.mode = ModeNormal
+				m.textinput.Blur()
+
+				// Execute command
+				switch val {
+				case "w", "s", "save", "write":
+					if m.filename != "" {
+						err := os.WriteFile(m.filename, []byte(m.textarea.Value()), 0644)
+						if err != nil {
+							m.msg = "Error saving: " + err.Error()
+						} else {
+							m.msg = "Saved: " + m.filename
+						}
+					} else {
+						m.msg = "No filename set!"
+					}
+				case "q", "quit":
+					return m, tea.Quit
+				default:
+					m.msg = "Unknown command: " + val
+				}
+			default:
+				m.textinput, cmd = m.textinput.Update(msg)
+				cmds = append(cmds, cmd)
 			}
 		}
 	}
 
-	return m, cmd
+	// Always update blinking cursors if needed?
+	// But usually only active component needs update.
+	// We did specific updates above.
+
+	return m, tea.Batch(cmds...)
 }
 
 func (m EditorModel) View() string {
-	// Status Bar
-	statusMode := modeName(m.mode)
-	var statusColor lipgloss.Color
-	if m.mode == ModeInsert {
-		statusColor = ColorPrimary // Pink
+	// Status/Command Bar
+	var barContent string
+	var statusStyle lipgloss.Style
+
+	if m.mode == ModeCommand {
+		// Show textinput
+		barContent = m.textinput.View()
+		statusStyle = lipgloss.NewStyle().
+			Foreground(ColorText).
+			Background(ColorDark). // Or different background for command?
+			Padding(0, 1)
 	} else {
-		statusColor = ColorSecondary // Purple
+		// Show Status
+		statusMode := modeName(m.mode)
+		var statusColor lipgloss.Color
+		if m.mode == ModeInsert {
+			statusColor = ColorPrimary // Pink
+		} else {
+			statusColor = ColorSecondary // Purple
+		}
+
+		statusStyle = lipgloss.NewStyle().
+			Foreground(ColorText).
+			Background(statusColor).
+			Padding(0, 1)
+
+		msgInfo := ""
+		if m.msg != "" {
+			msgInfo = "  " + m.msg
+		}
+
+		barContent = fmt.Sprintf("%s  %s%s", statusMode, m.filename, msgInfo)
 	}
-
-	statusStyle := lipgloss.NewStyle().
-		Foreground(ColorText).
-		Background(statusColor).
-		Padding(0, 1)
-
-	statusText := fmt.Sprintf("%s  %s", statusMode, m.filename)
-
-	// Textarea with borders handled by layout, or subtle border
-	// We'll remove the heavy border here and let layout handle main structure,
-	// or use a very subtle one.
 
 	return StyleEditor.
 		Width(m.width).
@@ -97,7 +167,7 @@ func (m EditorModel) View() string {
 			lipgloss.JoinVertical(
 				lipgloss.Left,
 				m.textarea.View(),
-				statusStyle.Render(statusText),
+				statusStyle.Width(m.width).Render(barContent), // Ensure bar stretches?
 			),
 		)
 }
