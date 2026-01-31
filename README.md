@@ -52,3 +52,24 @@ go build -o boba-text.exe main.go
 - **TUI Framework**: [Bubble Tea](https://github.com/charmbracelet/bubbletea)
 - **Styling**: [Lipgloss](https://github.com/charmbracelet/lipgloss)
 - **Components**: [Bubbles](https://github.com/charmbracelet/bubbles)
+
+## ⚙️ Configuration
+
+Create a `config.toml` (or `~/.boba-config.toml`) to customize colors, keys, AI, and commands:
+
+```toml
+[colors]
+primary = "#F25D94"
+text = "#FAFAFA"
+
+[keys]
+toggle_tree = "ctrl+b"
+focus_agent = "ctrl+a"
+
+[ai]
+name = "BobaBot"
+
+[commands]
+save = ["w", "s", "save"]
+quit = ["q", "quit"]
+```

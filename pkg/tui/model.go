@@ -3,6 +3,7 @@ package tui
 import (
 	"os"
 
+	"github.com/CiaranMccarthy1/boba-text/pkg/config"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -23,15 +24,18 @@ type Model struct {
 	showTree bool
 	width    int
 	height   int
+	keys     config.Keys
 }
 
-func InitialModel(startPath string) Model {
+func InitialModel(startPath string, cfg config.Config) Model {
+	InitStyles(cfg.Colors) // Initialize styles globally
 	return Model{
 		fileTree: NewFileTree(startPath),
-		editor:   NewEditor(),
-		agent:    NewAgent(),
+		editor:   NewEditor(cfg.Commands),
+		agent:    NewAgent(cfg.AI),
 		focus:    FocusFileTree,
 		showTree: true,
+		keys:     cfg.Keys,
 	}
 }
 
@@ -46,9 +50,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "q": // Global quit
+		case "ctrl+c", m.keys.Quit: // Global quit (always support ctrl+c fallback?)
 			return m, tea.Quit
-		case "tab":
+		case m.keys.CycleFocus:
 			// If Editor is focused and in Insert mode, pass the key through (don't switch focus)
 			if m.focus == FocusEditor && m.editor.mode == ModeInsert {
 				break
@@ -57,11 +61,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.focus = (m.focus + 1) % 3
 			return m, nil
 
-		case "ctrl+b":
+		case m.keys.ToggleTree:
 			m.showTree = !m.showTree
 			m.resizePanes()
+			return m, nil
 
-		case "ctrl+e":
+		case m.keys.FocusTree:
 			if m.focus == FocusFileTree {
 				// If already focused, toggle back to editor
 				m.focus = FocusEditor
@@ -73,13 +78,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.resizePanes()
 				}
 			}
+			return m, nil
 
-		case "ctrl+a":
+		case m.keys.FocusAgent:
 			if m.focus == FocusAgent {
 				m.focus = FocusEditor
 			} else {
 				m.focus = FocusAgent
 			}
+			return m, nil
 		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width

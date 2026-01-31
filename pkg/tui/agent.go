@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/CiaranMccarthy1/boba-text/pkg/config"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -18,9 +19,10 @@ type AgentModel struct {
 	aiStyle     lipgloss.Style
 	width       int
 	height      int
+	config      config.AI
 }
 
-func NewAgent() AgentModel {
+func NewAgent(aiConfig config.AI) AgentModel {
 	ta := textarea.New()
 	ta.Placeholder = "Ask the AI agent..."
 	ta.Focus()
@@ -37,6 +39,7 @@ func NewAgent() AgentModel {
 		messages:    []string{},
 		senderStyle: lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true),
 		aiStyle:     lipgloss.NewStyle().Foreground(ColorSuccess),
+		config:      aiConfig,
 	}
 }
 
@@ -64,7 +67,11 @@ func (m AgentModel) Update(msg tea.Msg) (AgentModel, tea.Cmd) {
 			m.messages = append(m.messages, userMsg)
 
 			// Simulate AI response
-			aiMsg := m.aiStyle.Render("Agent: ") + "I received: " + m.textarea.Value()
+			aiName := m.config.Name
+			if aiName == "" {
+				aiName = "Agent"
+			}
+			aiMsg := m.aiStyle.Render(aiName+": ") + "I received: " + m.textarea.Value()
 			m.messages = append(m.messages, aiMsg)
 
 			m.viewport.SetContent(strings.Join(m.messages, "\n"))

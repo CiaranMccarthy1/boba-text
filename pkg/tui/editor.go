@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/CiaranMccarthy1/boba-text/pkg/config"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -26,9 +27,10 @@ type EditorModel struct {
 	height    int
 	filename  string
 	msg       string // For status messages like "Saved!"
+	commands  config.Commands
 }
 
-func NewEditor() EditorModel {
+func NewEditor(cmdConfig config.Commands) EditorModel {
 	ta := textarea.New()
 	ta.Placeholder = "Empty file..."
 	ta.Focus()
@@ -45,6 +47,7 @@ func NewEditor() EditorModel {
 		textarea:  ta,
 		textinput: ti,
 		mode:      ModeNormal,
+		commands:  cmdConfig,
 	}
 }
 
@@ -94,8 +97,7 @@ func (m EditorModel) Update(msg tea.Msg) (EditorModel, tea.Cmd) {
 				m.textinput.Blur()
 
 				// Execute command
-				switch val {
-				case "w", "s", "save", "write":
+				if contains(m.commands.Save, val) {
 					if m.filename != "" {
 						err := os.WriteFile(m.filename, []byte(m.textarea.Value()), 0644)
 						if err != nil {
@@ -106,9 +108,9 @@ func (m EditorModel) Update(msg tea.Msg) (EditorModel, tea.Cmd) {
 					} else {
 						m.msg = "No filename set!"
 					}
-				case "q", "quit":
+				} else if contains(m.commands.Quit, val) {
 					return m, tea.Quit
-				default:
+				} else {
 					m.msg = "Unknown command: " + val
 				}
 			default:
@@ -123,6 +125,15 @@ func (m EditorModel) Update(msg tea.Msg) (EditorModel, tea.Cmd) {
 	// We did specific updates above.
 
 	return m, tea.Batch(cmds...)
+}
+
+func contains(slice []string, val string) bool {
+	for _, item := range slice {
+		if item == val {
+			return true
+		}
+	}
+	return false
 }
 
 func (m EditorModel) View() string {

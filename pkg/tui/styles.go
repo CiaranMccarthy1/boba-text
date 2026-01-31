@@ -1,47 +1,66 @@
 package tui
 
-import "github.com/charmbracelet/lipgloss"
-
-// Color Palette
-var (
-	ColorText      = lipgloss.Color("#FAFAFA")
-	ColorSubText   = lipgloss.Color("#7D7D7D")
-	ColorPrimary   = lipgloss.Color("#F25D94") // Neon Pink
-	ColorSecondary = lipgloss.Color("#A550DF") // Purple
-	ColorAccent    = lipgloss.Color("#61AFEF") // Blue/Cyan
-	ColorSuccess   = lipgloss.Color("#98C379") // Green
-	ColorWarning   = lipgloss.Color("#E5C07B") // Yellow
-	ColorError     = lipgloss.Color("#E06C75") // Red
-	ColorDark      = lipgloss.Color("#1E1E1E") // Dark Background (optional usage)
+import (
+	"github.com/CiaranMccarthy1/boba-text/pkg/config"
+	"github.com/charmbracelet/lipgloss"
 )
 
-// UI Styles
+// Global Styles Struct (populated on Init)
 var (
-	// Text Styles
-	StyleNormal = lipgloss.NewStyle().Foreground(ColorText)
-	StyleDim    = lipgloss.NewStyle().Foreground(ColorSubText)
-	StyleBold   = lipgloss.NewStyle().Bold(true).Foreground(ColorText)
+	ColorText      lipgloss.Color
+	ColorSubText   lipgloss.Color
+	ColorPrimary   lipgloss.Color
+	ColorSecondary lipgloss.Color
+	ColorAccent    lipgloss.Color
+	ColorSuccess   lipgloss.Color
+	ColorWarning   lipgloss.Color
+	ColorError     lipgloss.Color
+	ColorDark      lipgloss.Color
 
-	// Selection / Focus Styles
+	StyleNormal         lipgloss.Style
+	StyleDim            lipgloss.Style
+	StyleBold           lipgloss.Style
+	StyleSelected       lipgloss.Style
+	StyleActiveBorder   lipgloss.Style
+	StyleInactiveBorder lipgloss.Style
+	StyleFileTree       lipgloss.Style
+	StyleEditor         lipgloss.Style
+	StyleAgent          lipgloss.Style
+)
+
+func InitStyles(c config.Colors) {
+	ColorText = lipgloss.Color(c.Text)
+	ColorSubText = lipgloss.Color(c.SubText)
+	ColorPrimary = lipgloss.Color(c.Primary)
+	ColorSecondary = lipgloss.Color(c.Secondary)
+	ColorAccent = lipgloss.Color(c.Accent)
+	ColorSuccess = lipgloss.Color(c.Success)
+	ColorWarning = lipgloss.Color(c.Warning)
+	ColorError = lipgloss.Color(c.Error)
+	ColorDark = lipgloss.Color(c.Dark)
+
+	StyleNormal = lipgloss.NewStyle().Foreground(ColorText)
+	StyleDim = lipgloss.NewStyle().Foreground(ColorSubText)
+	StyleBold = lipgloss.NewStyle().Bold(true).Foreground(ColorText)
+
 	StyleSelected = lipgloss.NewStyle().
-			Foreground(ColorPrimary).
-			Bold(true)
+		Foreground(ColorPrimary).
+		Bold(true)
 
 	StyleActiveBorder = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(ColorPrimary)
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(ColorPrimary)
 
 	StyleInactiveBorder = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(ColorSubText)
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(ColorSubText)
 
-	// Panes
 	StyleFileTree = lipgloss.NewStyle().
-			Padding(1, 2) // Clean padding, no border by default? Or subtle right border.
+		Padding(1, 2)
 
 	StyleEditor = lipgloss.NewStyle().
-			Padding(0, 1)
+		Padding(0, 1)
 
 	StyleAgent = lipgloss.NewStyle().
-			Padding(0, 1)
-)
+		Padding(0, 1)
+}
