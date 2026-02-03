@@ -26,10 +26,11 @@ type EditorModel struct {
 	width     int
 	height    int
 	filename  string
-	msg       string // For status messages like "Saved!"
+	msg       string
 	commands  config.Commands
 }
 
+// NewEditor creates a new editor model with the given command configuration.
 func NewEditor(cmdConfig config.Commands) EditorModel {
 	ta := textarea.New()
 	ta.Placeholder = "Empty file..."
@@ -89,14 +90,13 @@ func (m EditorModel) Update(msg tea.Msg) (EditorModel, tea.Cmd) {
 			case "esc":
 				m.mode = ModeNormal
 				m.textinput.Blur()
-				m.textarea.Focus() // Return focus to textarea (but in normal mode logic)
+				m.textarea.Focus()
 				m.msg = ""
 			case "enter":
 				val := m.textinput.Value()
 				m.mode = ModeNormal
 				m.textinput.Blur()
 
-				// Execute command
 				if contains(m.commands.Save, val) {
 					if m.filename != "" {
 						err := os.WriteFile(m.filename, []byte(m.textarea.Value()), 0644)
@@ -120,13 +120,10 @@ func (m EditorModel) Update(msg tea.Msg) (EditorModel, tea.Cmd) {
 		}
 	}
 
-	// Always update blinking cursors if needed?
-	// But usually only active component needs update.
-	// We did specific updates above.
-
 	return m, tea.Batch(cmds...)
 }
 
+// contains checks if a string value exists in a slice.
 func contains(slice []string, val string) bool {
 	for _, item := range slice {
 		if item == val {
@@ -136,26 +133,24 @@ func contains(slice []string, val string) bool {
 	return false
 }
 
+// View renders the editor as a string.
 func (m EditorModel) View() string {
-	// Status/Command Bar
 	var barContent string
 	var statusStyle lipgloss.Style
 
 	if m.mode == ModeCommand {
-		// Show textinput
 		barContent = m.textinput.View()
 		statusStyle = lipgloss.NewStyle().
 			Foreground(ColorText).
-			Background(ColorDark). // Or different background for command?
+			Background(ColorDark).
 			Padding(0, 1)
 	} else {
-		// Show Status
 		statusMode := modeName(m.mode)
 		var statusColor lipgloss.Color
 		if m.mode == ModeInsert {
-			statusColor = ColorPrimary // Pink
+			statusColor = ColorPrimary
 		} else {
-			statusColor = ColorSecondary // Purple
+			statusColor = ColorSecondary
 		}
 
 		statusStyle = lipgloss.NewStyle().
@@ -178,11 +173,12 @@ func (m EditorModel) View() string {
 			lipgloss.JoinVertical(
 				lipgloss.Left,
 				m.textarea.View(),
-				statusStyle.Width(m.width).Render(barContent), // Ensure bar stretches?
+				statusStyle.Width(m.width).Render(barContent),
 			),
 		)
 }
 
+// modeName returns the display name for the given editor mode.
 func modeName(m EditorMode) string {
 	if m == ModeInsert {
 		return "INSERT"
@@ -190,6 +186,7 @@ func modeName(m EditorMode) string {
 	return "NORMAL"
 }
 
+// SetContent sets the editor content and filename.
 func (m *EditorModel) SetContent(content string, filename string) {
 	m.textarea.SetValue(content)
 	m.filename = filename

@@ -5,7 +5,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Global Styles Struct (populated on Init)
 var (
 	ColorText      lipgloss.Color
 	ColorSubText   lipgloss.Color
@@ -28,6 +27,7 @@ var (
 	StyleAgent          lipgloss.Style
 )
 
+// InitStyles initializes all global styles with the given color configuration.
 func InitStyles(c config.Colors) {
 	ColorText = lipgloss.Color(c.Text)
 	ColorSubText = lipgloss.Color(c.SubText)

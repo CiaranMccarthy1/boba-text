@@ -22,6 +22,7 @@ type AgentModel struct {
 	config      config.AI
 }
 
+// NewAgent creates a new AI agent model with the given configuration.
 func NewAgent(aiConfig config.AI) AgentModel {
 	ta := textarea.New()
 	ta.Placeholder = "Ask the AI agent..."
@@ -66,7 +67,6 @@ func (m AgentModel) Update(msg tea.Msg) (AgentModel, tea.Cmd) {
 			userMsg := m.senderStyle.Render("You: ") + m.textarea.Value()
 			m.messages = append(m.messages, userMsg)
 
-			// Simulate AI response
 			aiName := m.config.Name
 			if aiName == "" {
 				aiName = "Agent"
@@ -98,5 +98,5 @@ func (m *AgentModel) SetSize(w, h int) {
 	m.height = h
 	m.textarea.SetWidth(w)
 	m.viewport.Width = w
-	m.viewport.Height = h - m.textarea.Height() - 2 // Subtract textarea and padding
+	m.viewport.Height = h - m.textarea.Height() - 2
 }

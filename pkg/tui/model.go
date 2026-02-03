@@ -27,8 +27,9 @@ type Model struct {
 	keys     config.Keys
 }
 
+// InitialModel creates the initial application model with the given configuration.
 func InitialModel(startPath string, cfg config.Config) Model {
-	InitStyles(cfg.Colors) // Initialize styles globally
+	InitStyles(cfg.Colors)
 	return Model{
 		fileTree: NewFileTree(startPath),
 		editor:   NewEditor(cfg.Commands),
@@ -50,14 +51,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", m.keys.Quit: // Global quit (always support ctrl+c fallback?)
+		case "ctrl+c", m.keys.Quit:
 			return m, tea.Quit
 		case m.keys.CycleFocus:
-			// If Editor is focused and in Insert mode, pass the key through (don't switch focus)
 			if m.focus == FocusEditor && m.editor.mode == ModeInsert {
 				break
 			}
-			// Cycle focus: FileTree -> Editor -> Agent -> FileTree
 			m.focus = (m.focus + 1) % 3
 			return m, nil
 
@@ -68,10 +67,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case m.keys.FocusTree:
 			if m.focus == FocusFileTree {
-				// If already focused, toggle back to editor
 				m.focus = FocusEditor
 			} else {
-				// Otherwise focus tree and ensure visible
 				m.focus = FocusFileTree
 				if !m.showTree {
 					m.showTree = true
@@ -101,7 +98,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Update components based on focus
 	switch m.focus {
 	case FocusFileTree:
 		if m.showTree {
@@ -127,10 +123,6 @@ func (m *Model) resizePanes() {
 		m.fileTree.height = m.height - 2
 	}
 
-	// Content width depends on tree visibility
-	// If tree is shown: width - treeWidth - padding (approx 4 chars total borders/gap)
-	// If tree hidden: width - padding
-
 	padding := 4
 	if !m.showTree {
 		padding = 2
@@ -138,7 +130,7 @@ func (m *Model) resizePanes() {
 
 	contentWidth := m.width - treeWidth - padding
 	if contentWidth < 10 {
-		contentWidth = 10 // Minimum safety
+		contentWidth = 10
 	}
 	contentHeight := m.height - 2
 
@@ -158,7 +150,6 @@ func (m Model) View() string {
 		content = m.editor.View()
 	}
 
-	// Dynamic Border Color
 	var borderColor lipgloss.Color
 	switch m.focus {
 	case FocusAgent:
@@ -169,8 +160,7 @@ func (m Model) View() string {
 		borderColor = ColorSubText
 	}
 
-	// Content Pane
-	contentWidth := m.width - 34 // Default if tree shown
+	contentWidth := m.width - 34
 	if !m.showTree {
 		contentWidth = m.width - 2
 	}
@@ -189,6 +179,5 @@ func (m Model) View() string {
 		)
 	}
 
-	// Just render content if tree hidden
 	return contentStyle.Render(content)
 }

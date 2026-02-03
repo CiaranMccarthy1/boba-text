@@ -44,6 +44,7 @@ type Config struct {
 	Commands Commands `toml:"commands"`
 }
 
+// DefaultConfig returns the default configuration with sensible preset values.
 func DefaultConfig() Config {
 	return Config{
 		Colors: Colors{
@@ -75,6 +76,7 @@ func DefaultConfig() Config {
 	}
 }
 
+// Load attempts to load configuration from local file or home directory, falling back to defaults.
 func Load() Config {
 	// Try local file first, then home dir
 	paths := []string{"config.toml"}
@@ -87,7 +89,6 @@ func Load() Config {
 	for _, path := range paths {
 		if _, err := os.Stat(path); err == nil {
 			var cfg Config
-			// Start with defaults to fill missing fields
 			defaults := DefaultConfig()
 			cfg = defaults
 
