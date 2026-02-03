@@ -2,7 +2,6 @@
 
 A modern, Vim-inspired terminal code editor with a built-in AI agent. Built with Go, Bubble Tea, and Lipgloss.
 
-![Boba Text](https://placehold.co/600x400/1E1E1E/F25D94?text=Boba+Text+UI)
 
 ## Features
 
