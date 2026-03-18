@@ -69,6 +69,43 @@ func (m EditorModel) Update(msg tea.Msg) (EditorModel, tea.Cmd) {
 				m.mode = ModeInsert
 				m.textarea.Focus()
 				m.msg = ""
+			case "a":
+				m.textarea, _ = m.textarea.Update(tea.KeyMsg{Type: tea.KeyRight})
+				m.mode = ModeInsert
+				m.textarea.Focus()
+				m.msg = ""
+			case "o":
+				m.textarea, _ = m.textarea.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'\n'}})
+				m.mode = ModeInsert
+				m.textarea.Focus()
+				m.msg = ""
+			case "O":
+				m.textarea, _ = m.textarea.Update(tea.KeyMsg{Type: tea.KeyUp})
+				m.textarea, _ = m.textarea.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'\n'}})
+				m.textarea, _ = m.textarea.Update(tea.KeyMsg{Type: tea.KeyUp})
+				m.mode = ModeInsert
+				m.textarea.Focus()
+				m.msg = ""
+			case "x":
+				m.textarea, _ = m.textarea.Update(tea.KeyMsg{Type: tea.KeyDelete})
+			case "h":
+				m.textarea, _ = m.textarea.Update(tea.KeyMsg{Type: tea.KeyLeft})
+			case "j":
+				m.textarea, _ = m.textarea.Update(tea.KeyMsg{Type: tea.KeyDown})
+			case "k":
+				m.textarea, _ = m.textarea.Update(tea.KeyMsg{Type: tea.KeyUp})
+			case "l":
+				m.textarea, _ = m.textarea.Update(tea.KeyMsg{Type: tea.KeyRight})
+			case "0":
+				m.textarea, _ = m.textarea.Update(tea.KeyMsg{Type: tea.KeyHome})
+			case "$":
+				m.textarea, _ = m.textarea.Update(tea.KeyMsg{Type: tea.KeyEnd})
+			case "g":
+				// Approximate start of file
+				for i := 0; i < 50; i++ { m.textarea, _ = m.textarea.Update(tea.KeyMsg{Type: tea.KeyPgUp}) }
+			case "G":
+				// Approximate end of file
+				for i := 0; i < 50; i++ { m.textarea, _ = m.textarea.Update(tea.KeyMsg{Type: tea.KeyPgDown}) }
 			case ":":
 				m.mode = ModeCommand
 				m.textinput.Focus()
@@ -79,7 +116,6 @@ func (m EditorModel) Update(msg tea.Msg) (EditorModel, tea.Cmd) {
 			switch msg.String() {
 			case "esc":
 				m.mode = ModeNormal
-				m.textarea.Blur()
 				m.msg = ""
 			default:
 				m.textarea, cmd = m.textarea.Update(msg)

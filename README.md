@@ -2,8 +2,6 @@
 
 A modern, Vim-inspired terminal code editor with a built-in AI agent. Built with Go, Bubble Tea, and Lipgloss.
 
-![Boba Text](https://placehold.co/600x400/1E1E1E/F25D94?text=Boba+Text+UI)
-
 ## Features
 
 - **Neon/Dark Theme**: A sleek interface with pink, purple, and neon blue accents.
@@ -37,13 +35,20 @@ go build -o boba-text.exe main.go
 | **Global** | `Ctrl+b` | Toggle File Tree sidebar |
 | **Global** | `Ctrl+e` | Focus / Open File Tree |
 | **Global** | `Ctrl+a` | Focus AI Agent |
+| **Global** | `Ctrl+s` | **Save File** (Nano-style) |
+| **Global** | `Ctrl+x` | **Quit** (Nano-style) |
 | **Global** | `Tab` | Cycle focus (Tree -> Editor -> Agent) |
-| **Global** | `Ctrl+c` / `q` | Quit |
+| **Global** | `Ctrl+c` | Quit |
 | **File Tree** | `j` / `k` | Navigate Down / Up |
 | **File Tree** | `Enter` | Open File / Enter Dir / Go Up (`..`) |
-| **Editor** | `i` | Enter **Insert Mode** |
-| **Editor** | `Esc` | Enter **Normal Mode** |
-| **Editor** | `:` | Open **Command Bar** (`:w` to save) |
+| **Editor (Normal)** | `h`, `j`, `k`, `l` | Basic movement (Vim-style) |
+| **Editor (Normal)** | `0` / `$` | Start / End of line |
+| **Editor (Normal)** | `g` / `G` | Jump to Start / End of file |
+| **Editor (Normal)** | `x` | Delete character |
+| **Editor (Normal)** | `i` / `a` | Enter **Insert Mode** / Append |
+| **Editor (Normal)** | `o` / `O` | Open new line below / above |
+| **Editor (Insert)** | `Esc` | Return to **Normal Mode** |
+| **Editor (Normal)** | `:` | Open **Command Bar** (`:w` to save) |
 | **Agent** | `Enter` | Send message to AI |
 
 ## Stack
@@ -55,21 +60,23 @@ go build -o boba-text.exe main.go
 
 ## ⚙️ Configuration
 
-Create a `config.toml` (or `~/.boba-config.toml`) to customize colors, keys, AI, and commands:
+Boba Text comes with sensible defaults built-in. If you want to override them globally, you can create a `~/.config/boba-text/config.toml` (or `%APPDATA%\boba-text\config.toml` on Windows).
+
+Here is an example overriding colors, keys, and AI configuration:
 
 ```toml
 [colors]
-primary = "#F25D94"
-text = "#FAFAFA"
+primary = "#FF00FF"
+text = "#FFFFFF"
 
 [keys]
-toggle_tree = "ctrl+b"
-focus_agent = "ctrl+a"
+toggle_tree = "ctrl+t"
+save = "ctrl+s"
 
 [ai]
 name = "BobaBot"
 
 [commands]
-save = ["w", "s", "save"]
-quit = ["q", "quit"]
+save = ["w", "s", "save", "x"]
+quit = ["q", "quit", "exit"]
 ```
