@@ -18,6 +18,8 @@ cycle_focus = "tab"
 
 quit = "ctrl+c"
 
+save = "ctrl+s"
+
 tree_up = "up"
 
 tree_up_alt = "k"

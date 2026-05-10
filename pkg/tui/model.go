@@ -72,6 +72,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.focus = (m.focus + 1) % 3
 			return m, nil
 
+		case m.keys.Save:
+			if m.editor.filename != "" {
+				err := os.WriteFile(m.editor.filename, []byte(m.editor.textarea.Value()), 0644)
+				if err != nil {
+					m.editor.msg = "Error saving: " + err.Error()
+				} else {
+					m.editor.msg = "Saved: " + m.editor.filename
+				}
+			} else {
+				m.editor.msg = "No filename set!"
+			}
+			return m, nil
+
 		case m.keys.ToggleTree:
 			m.showTree = !m.showTree
 			m.resizePanes()
