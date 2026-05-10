@@ -2,29 +2,44 @@ package config
 
 import (
 	"os"
+
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 )
 
 type Colors struct {
-	Text      string `toml:"text"`
-	SubText   string `toml:"subtext"`
-	Primary   string `toml:"primary"`
+	Text string `toml:"text"`
+
+	SubText string `toml:"subtext"`
+
+	Primary string `toml:"primary"`
+
 	Secondary string `toml:"secondary"`
-	Accent    string `toml:"accent"`
-	Success   string `toml:"success"`
-	Warning   string `toml:"warning"`
-	Error     string `toml:"error"`
-	Dark      string `toml:"dark"`
+
+	Accent string `toml:"accent"`
+
+	Success string `toml:"success"`
+
+	Warning string `toml:"warning"`
+
+	Error string `toml:"error"`
+
+	Dark string `toml:"dark"`
 }
 
 type Keys struct {
 	ToggleTree string `toml:"toggle_tree"`
-	FocusTree  string `toml:"focus_tree"`
+
+	FocusTree string `toml:"focus_tree"`
+
 	FocusAgent string `toml:"focus_agent"`
+
 	CycleFocus string `toml:"cycle_focus"`
-	Quit       string `toml:"quit"`
+
+	Quit string `toml:"quit"`
+
+	Save string `toml:"save"`
 
 	TreeUp       string `toml:"tree_up"`
 	TreeUpAlt    string `toml:"tree_up_alt"`
@@ -44,23 +59,29 @@ type Keys struct {
 }
 
 type AI struct {
-	Name  string `toml:"name"`
+	Name string `toml:"name"`
+
 	Model string `toml:"model"`
 }
 
 type Commands struct {
 	Save []string `toml:"save"`
+
 	Quit []string `toml:"quit"`
 }
 
 type Config struct {
-	Colors   Colors   `toml:"colors"`
-	Keys     Keys     `toml:"keys"`
-	AI       AI       `toml:"ai"`
+	Colors Colors `toml:"colors"`
+
+	Keys Keys `toml:"keys"`
+
+	AI AI `toml:"ai"`
+
 	Commands Commands `toml:"commands"`
 }
 
 // DefaultConfig returns the default configuration with sensible preset values.
+
 func DefaultConfig() Config {
 	return Config{
 		Colors: Colors{
@@ -80,26 +101,10 @@ func DefaultConfig() Config {
 			FocusAgent: "ctrl+a",
 			CycleFocus: "tab",
 			Quit:       "ctrl+c",
-
-			TreeUp:       "up",
-			TreeUpAlt:    "k",
-			TreeDown:     "down",
-			TreeDownAlt:  "j",
-			TreeOpen:     "enter",
-			TreeBack:     "backspace",
-			TreeBackAlt:  "h",
-			TreeBackAlt2: "left",
-
-			EditorInsertMode:  "i",
-			EditorCommandMode: ":",
-			EditorNormalMode:  "esc",
-			EditorCommandRun:  "enter",
-
-			AgentSend: "enter",
 		},
-	AI: AI{
-			Name:  "Gemini",
-			Model: "gemini-2.0-flash",
+		AI: AI{
+			Name:  "Agent",
+			Model: "default",
 		},
 		Commands: Commands{
 			Save: []string{"w", "s", "save", "write"},
@@ -109,27 +114,40 @@ func DefaultConfig() Config {
 }
 
 // Load attempts to load configuration from local file or home directory, falling back to defaults.
-func Load() Config {
-	// Try local file first, then home dir
-	paths := []string{"config.toml"}
 
-	home, err := os.UserHomeDir()
+func Load() Config {
+
+	var paths []string
+
+	configDir, err := os.UserConfigDir()
 	if err == nil {
-		paths = append(paths, filepath.Join(home, ".boba-config.toml"))
+		paths = append(paths, filepath.Join(configDir, "boba-text", "config.toml"))
 	}
 
 	for _, path := range paths {
+
 		if _, err := os.Stat(path); err == nil {
+
 			var cfg Config
+
 			defaults := DefaultConfig()
+
 			cfg = defaults
 
 			// Unmarshal over defaults (this is a simple way, though slightly imperfect for deep structs, works here)
+
 			if _, err := toml.DecodeFile(path, &cfg); err == nil {
+
 				return cfg
+
 			}
+
 		}
+
 	}
 
 	return DefaultConfig()
+
 }
+
+//Test comment
