@@ -124,15 +124,18 @@ Then press `Ctrl+A` to open the AI Agent tab and chat with Gemini about your cod
 
 ## Configuration
 
-Create a `config.toml` (or `~/.boba-config.toml`) to customize colors, keys, AI, and commands:
+Boba Text comes with sensible defaults built-in. If you want to override them globally, you can create a `~/.config/boba-text/config.toml` (or `%APPDATA%\boba-text\config.toml` on Windows).
+
+Here is an example overriding colors, keys, and AI configuration:
 
 ```toml
 [colors]
-primary = "#F25D94"
-text = "#FAFAFA"
+primary = "#FF00FF"
+text = "#FFFFFF"
 
 [keys]
 toggle_tree = "ctrl+t"
+<<<<<<< HEAD
 focus_tree = "ctrl+e"
 focus_agent = "ctrl+a"
 cycle_focus = "tab"
@@ -153,14 +156,17 @@ editor_normal_mode = "esc"
 editor_command_run = "enter"
 
 agent_send = "enter"
+=======
+save = "ctrl+s"
+>>>>>>> ed67094bea9b6958e68c5cfa45b46b5675b0f73f
 
 [ai]
 name = "Gemini"
 model = "gemini-2.0-flash"
 
 [commands]
-save = ["w", "s", "save"]
-quit = ["q", "quit"]
+save = ["w", "s", "save", "x"]
+quit = ["q", "quit", "exit"]
 ```
 
 ## License

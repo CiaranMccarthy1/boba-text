@@ -3,7 +3,9 @@ package tui
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/CiaranMccarthy1/boba-text/pkg/config"
 	"github.com/charmbracelet/bubbles/textarea"
@@ -80,7 +82,7 @@ func (m EditorModel) Update(msg tea.Msg) (EditorModel, tea.Cmd) {
 	case tea.KeyMsg:
 		switch m.mode {
 		case ModeNormal:
-			cmd = m.handleNormalMode(msg.String())
+			cmd = m.handleNormalMode(msg)
 			if cmd != nil {
 				return m, cmd
 			}
@@ -88,7 +90,6 @@ func (m EditorModel) Update(msg tea.Msg) (EditorModel, tea.Cmd) {
 			switch msg.String() {
 			case m.keys.EditorNormalMode:
 				m.mode = ModeNormal
-				m.textarea.Blur()
 				m.msg = ""
 			default:
 				m.textarea, cmd = m.textarea.Update(msg)
@@ -121,7 +122,11 @@ func (m EditorModel) Update(msg tea.Msg) (EditorModel, tea.Cmd) {
 				m.mode = ModeNormal
 				m.searchInput.Blur()
 				if m.searchQuery != "" {
-					m.msg = "/" + m.searchQuery
+					if m.findNextMatch(true) {
+						m.msg = "/" + m.searchQuery
+					} else {
+						m.msg = "No match: /" + m.searchQuery
+					}
 				}
 			default:
 				m.searchInput, cmd = m.searchInput.Update(msg)
@@ -134,7 +139,8 @@ func (m EditorModel) Update(msg tea.Msg) (EditorModel, tea.Cmd) {
 }
 
 // handleNormalMode processes key presses in Normal mode (Vim motions).
-func (m *EditorModel) handleNormalMode(key string) tea.Cmd {
+func (m *EditorModel) handleNormalMode(msg tea.KeyMsg) tea.Cmd {
+	key := msg.String()
 	switch key {
 	// Enter insert mode
 	case m.keys.EditorInsertMode:
@@ -159,17 +165,19 @@ func (m *EditorModel) handleNormalMode(key string) tea.Cmd {
 	case "k", "up":
 		m.textarea.CursorUp()
 	case "h", "left":
-		col := m.textarea.LineInfo().ColumnOffset
+		li := m.textarea.LineInfo()
+		col := li.StartColumn + li.ColumnOffset
 		if col > 0 {
 			m.textarea.SetCursor(col - 1)
 		}
 	case "l", "right":
-		m.textarea.SetCursor(m.textarea.LineInfo().ColumnOffset + 1)
+		li := m.textarea.LineInfo()
+		m.textarea.SetCursor(li.StartColumn + li.ColumnOffset + 1)
 	// Word motions
 	case "w":
-		m.wordForward()
+		return m.wordForward()
 	case "b":
-		m.wordBackward()
+		return m.wordBackward()
 	// Line start/end
 	case "0", "home":
 		m.textarea.CursorStart()
@@ -177,21 +185,25 @@ func (m *EditorModel) handleNormalMode(key string) tea.Cmd {
 		m.textarea.CursorEnd()
 	// Top/bottom of file
 	case "G":
-		lines := strings.Split(m.textarea.Value(), "\n")
-		for i := 0; i < len(lines); i++ {
-			m.textarea.CursorDown()
-		}
+		m.moveToLine(m.textarea.LineCount() - 1)
+		m.textarea.CursorStart()
 	// Insert above/below
 	case "o":
 		m.textarea.CursorEnd()
+		cmd := m.applyTextareaKey(tea.KeyMsg{Type: tea.KeyEnter})
 		m.textarea.Focus()
 		m.mode = ModeInsert
 		m.modified = true
+		return cmd
 	case "O":
+		m.textarea.CursorStart()
+		cmd := m.applyTextareaKey(tea.KeyMsg{Type: tea.KeyEnter})
+		m.moveToLine(m.textarea.Line() - 1)
 		m.textarea.CursorStart()
 		m.textarea.Focus()
 		m.mode = ModeInsert
 		m.modified = true
+		return cmd
 	// Insert at start/end of line
 	case "A":
 		m.textarea.CursorEnd()
@@ -203,25 +215,34 @@ func (m *EditorModel) handleNormalMode(key string) tea.Cmd {
 		m.mode = ModeInsert
 	// Delete char under cursor
 	case "x":
-		m.textarea.Focus()
-		// Simulate delete by sending a delete key
+		cmd := m.applyTextareaKey(tea.KeyMsg{Type: tea.KeyDelete})
 		m.modified = true
-		m.textarea.Blur()
+		return cmd
 	// Search next/prev
 	case "n":
 		if m.searchQuery != "" {
-			m.msg = "search: " + m.searchQuery
+			if m.findNextMatch(true) {
+				m.msg = "/" + m.searchQuery
+			} else {
+				m.msg = "No match: /" + m.searchQuery
+			}
 		}
 	case "N":
 		if m.searchQuery != "" {
-			m.msg = "search (prev): " + m.searchQuery
+			if m.findNextMatch(false) {
+				m.msg = "/" + m.searchQuery
+			} else {
+				m.msg = "No match: /" + m.searchQuery
+			}
 		}
+	// Yank current line
+	case "y":
+		m.yankCurrentLine()
 	// Paste
 	case "p":
 		if m.yankBuffer != "" {
 			m.textarea.Focus()
 			m.textarea.InsertString(m.yankBuffer)
-			m.textarea.Blur()
 			m.modified = true
 			m.msg = "Pasted"
 		}
@@ -236,7 +257,13 @@ func (m *EditorModel) executeCommand(val string) tea.Cmd {
 
 	// Handle line number jump :<number>
 	if len(val) > 0 && val[0] >= '0' && val[0] <= '9' {
-		m.msg = fmt.Sprintf("Jump to line %s", val)
+		lineNum, err := strconv.Atoi(val)
+		if err != nil {
+			m.msg = "Invalid line: " + val
+			return nil
+		}
+		m.jumpToLine(lineNum)
+		m.msg = fmt.Sprintf("Jump to line %d", lineNum)
 		return nil
 	}
 
@@ -279,18 +306,174 @@ func (m *EditorModel) saveFile() tea.Cmd {
 	return nil
 }
 
+// applyTextareaKey sends a key message through the textarea to reuse its motion logic.
+func (m *EditorModel) applyTextareaKey(msg tea.KeyMsg) tea.Cmd {
+	ta, cmd := m.textarea.Update(msg)
+	m.textarea = ta
+	return cmd
+}
+
 // wordForward moves the cursor forward by one word.
-func (m *EditorModel) wordForward() {
-	m.textarea.SetCursor(m.textarea.LineInfo().ColumnOffset + 5)
+func (m *EditorModel) wordForward() tea.Cmd {
+	return m.applyTextareaKey(tea.KeyMsg{Type: tea.KeyRight, Alt: true})
 }
 
 // wordBackward moves the cursor backward by one word.
-func (m *EditorModel) wordBackward() {
-	col := m.textarea.LineInfo().ColumnOffset - 5
+func (m *EditorModel) wordBackward() tea.Cmd {
+	return m.applyTextareaKey(tea.KeyMsg{Type: tea.KeyLeft, Alt: true})
+}
+
+func (m *EditorModel) currentCursor() (int, int) {
+	row := m.textarea.Line()
+	li := m.textarea.LineInfo()
+	col := li.StartColumn + li.ColumnOffset
 	if col < 0 {
 		col = 0
 	}
+	return row, col
+}
+
+func (m *EditorModel) moveToLine(target int) {
+	maxLine := m.textarea.LineCount() - 1
+	if maxLine < 0 {
+		return
+	}
+	if target < 0 {
+		target = 0
+	} else if target > maxLine {
+		target = maxLine
+	}
+	for m.textarea.Line() < target {
+		m.textarea.CursorDown()
+	}
+	for m.textarea.Line() > target {
+		m.textarea.CursorUp()
+	}
+}
+
+func (m *EditorModel) moveCursorTo(row, col int) {
+	m.moveToLine(row)
 	m.textarea.SetCursor(col)
+}
+
+func (m *EditorModel) jumpToLine(lineNum int) {
+	if lineNum < 1 {
+		lineNum = 1
+	}
+	m.moveToLine(lineNum - 1)
+	m.textarea.CursorStart()
+}
+
+func (m *EditorModel) yankCurrentLine() {
+	lines := strings.Split(m.textarea.Value(), "\n")
+	row := m.textarea.Line()
+	if row < 0 || row >= len(lines) {
+		return
+	}
+	m.yankBuffer = lines[row]
+	m.msg = "Yanked line"
+}
+
+func (m *EditorModel) findNextMatch(forward bool) bool {
+	if m.searchQuery == "" {
+		return false
+	}
+	lines := strings.Split(m.textarea.Value(), "\n")
+	if len(lines) == 0 {
+		return false
+	}
+	row, col := m.currentCursor()
+	if forward {
+		if matchRow, matchCol, ok := findMatchForward(lines, m.searchQuery, row, col+1); ok {
+			m.moveCursorTo(matchRow, matchCol)
+			return true
+		}
+		if matchRow, matchCol, ok := findMatchForward(lines, m.searchQuery, 0, 0); ok {
+			m.moveCursorTo(matchRow, matchCol)
+			return true
+		}
+		return false
+	}
+
+	startCol := col - 1
+	if matchRow, matchCol, ok := findMatchBackward(lines, m.searchQuery, row, startCol); ok {
+		m.moveCursorTo(matchRow, matchCol)
+		return true
+	}
+	lastRow := len(lines) - 1
+	lastCol := utf8.RuneCountInString(lines[lastRow]) - 1
+	if matchRow, matchCol, ok := findMatchBackward(lines, m.searchQuery, lastRow, lastCol); ok {
+		m.moveCursorTo(matchRow, matchCol)
+		return true
+	}
+	return false
+}
+
+func findMatchForward(lines []string, query string, startRow int, startCol int) (int, int, bool) {
+	if startRow < 0 || startRow >= len(lines) {
+		return 0, 0, false
+	}
+	for row := startRow; row < len(lines); row++ {
+		line := lines[row]
+		startByte := 0
+		if row == startRow {
+			startByte = runeIndexToByteIndex(line, startCol)
+		}
+		idx := strings.Index(line[startByte:], query)
+		if idx >= 0 {
+			matchByte := startByte + idx
+			matchCol := byteIndexToRuneIndex(line, matchByte)
+			return row, matchCol, true
+		}
+	}
+	return 0, 0, false
+}
+
+func findMatchBackward(lines []string, query string, startRow int, startCol int) (int, int, bool) {
+	if startRow < 0 || startRow >= len(lines) {
+		return 0, 0, false
+	}
+	for row := startRow; row >= 0; row-- {
+		line := lines[row]
+		endByte := len(line)
+		if row == startRow {
+			endByte = runeIndexToByteIndex(line, startCol+1)
+		}
+		if endByte < 0 {
+			endByte = 0
+		}
+		idx := strings.LastIndex(line[:endByte], query)
+		if idx >= 0 {
+			matchCol := byteIndexToRuneIndex(line, idx)
+			return row, matchCol, true
+		}
+	}
+	return 0, 0, false
+}
+
+func runeIndexToByteIndex(s string, runeIndex int) int {
+	if runeIndex <= 0 {
+		return 0
+	}
+	if runeIndex >= utf8.RuneCountInString(s) {
+		return len(s)
+	}
+	idx := 0
+	for i := 0; i < runeIndex && idx < len(s); i++ {
+		_, size := utf8.DecodeRuneInString(s[idx:])
+		idx += size
+	}
+	return idx
+}
+
+func byteIndexToRuneIndex(s string, byteIndex int) int {
+	if byteIndex <= 0 {
+		return 0
+	}
+	if byteIndex >= len(s) {
+		return utf8.RuneCountInString(s)
+	}
+	return utf8.RuneCountInString(s[:byteIndex])
 }
 
 // contains checks if a string value exists in a slice.
