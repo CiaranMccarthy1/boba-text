@@ -2,6 +2,8 @@ package tui
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/CiaranMccarthy1/boba-text/pkg/config"
 	tea "github.com/charmbracelet/bubbletea"
@@ -17,26 +19,30 @@ const (
 )
 
 type Model struct {
-	fileTree FileTreeModel
-	editor   EditorModel
-	agent    AgentModel
-	focus    Focus
-	showTree bool
-	width    int
-	height   int
-	keys     config.Keys
+	fileTree    FileTreeModel
+	editor      EditorModel
+	agent       AgentModel
+	focus       Focus
+	showTree    bool
+	showWelcome bool
+	width       int
+	height      int
+	keys        config.Keys
+	startPath   string
 }
 
 // InitialModel creates the initial application model with the given configuration.
 func InitialModel(startPath string, cfg config.Config) Model {
 	InitStyles(cfg.Colors)
 	return Model{
-		fileTree: NewFileTree(startPath),
-		editor:   NewEditor(cfg.Commands),
-		agent:    NewAgent(cfg.AI),
-		focus:    FocusFileTree,
-		showTree: true,
-		keys:     cfg.Keys,
+		fileTree:    NewFileTree(startPath, cfg.Keys),
+		editor:      NewEditor(cfg.Commands, cfg.Keys),
+		agent:       NewAgent(cfg.AI, cfg.Keys),
+		focus:       FocusFileTree,
+		showTree:    true,
+		showWelcome: true,
+		keys:        cfg.Keys,
+		startPath:   startPath,
 	}
 }
 
@@ -50,8 +56,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Dismiss welcome screen on any key
+		if m.showWelcome {
+			m.showWelcome = false
+			return m, nil
+		}
+
 		switch msg.String() {
-		case "ctrl+c", m.keys.Quit:
+		case m.keys.Quit:
 			return m, tea.Quit
 		case m.keys.CycleFocus:
 			if m.focus == FocusEditor && m.editor.mode == ModeInsert {
@@ -91,6 +103,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.resizePanes()
 
 	case OpenFileMsg:
+		m.showWelcome = false
 		content, err := os.ReadFile(msg.Path)
 		if err == nil {
 			m.editor.SetContent(string(content), msg.Path)
@@ -137,14 +150,55 @@ func (m *Model) resizePanes() {
 	m.editor.width = contentWidth
 	m.editor.height = contentHeight
 	m.editor.textarea.SetWidth(contentWidth - 2)
-	m.editor.textarea.SetHeight(contentHeight - 2)
+	m.editor.textarea.SetHeight(contentHeight - 4)
 
 	m.agent.SetSize(contentWidth, contentHeight)
 }
 
+// renderWelcome renders the alpha.nvim-style welcome screen.
+func (m Model) renderWelcome() string {
+	logo := []string{
+		"",
+		"  ██████╗  ██████╗ ██████╗  █████╗ ",
+		"  ██╔══██╗██╔═══██╗██╔══██╗██╔══██╗",
+		"  ██████╔╝██║   ██║██████╔╝███████║",
+		"  ██╔══██╗██║   ██║██╔══██╗██╔══██╗",
+		"  ██████╔╝╚██████╔╝██████╔╝██║  ██║",
+		"  ╚═════╝  ╚═════╝ ╚═════╝ ╚═╝  ╚═╝",
+		"",
+		"         T  E  X  T    E D I T O R",
+		"",
+	}
+
+	actions := []string{
+		"",
+		"  Press  i  to start editing",
+		"  Press  Ctrl+E  to browse files",
+		"  Press  Ctrl+A  for AI agent",
+		"  Press  Ctrl+C  to quit",
+		"",
+		"  ──────────────────────────────",
+		"  Project: " + filepath.Base(m.startPath),
+		"",
+	}
+
+	var b strings.Builder
+	for _, line := range logo {
+		b.WriteString(StyleWelcome.Render(line) + "\n")
+	}
+	for _, line := range actions {
+		b.WriteString(StyleWelcomeDim.Render(line) + "\n")
+	}
+
+	return b.String()
+}
+
 func (m Model) View() string {
 	var content string
-	if m.focus == FocusAgent {
+
+	if m.showWelcome {
+		content = m.renderWelcome()
+	} else if m.focus == FocusAgent {
 		content = m.agent.View()
 	} else {
 		content = m.editor.View()
@@ -160,9 +214,17 @@ func (m Model) View() string {
 		borderColor = ColorSubText
 	}
 
-	contentWidth := m.width - 34
+	treeWidth := 0
+	if m.showTree {
+		treeWidth = 30
+	}
+	padding := 4
 	if !m.showTree {
-		contentWidth = m.width - 2
+		padding = 2
+	}
+	contentWidth := m.width - treeWidth - padding
+	if contentWidth < 10 {
+		contentWidth = 10
 	}
 
 	contentStyle := lipgloss.NewStyle().

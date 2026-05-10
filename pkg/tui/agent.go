@@ -11,28 +11,56 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// PendingRewrite holds a proposed file rewrite from the AI awaiting user approval.
+type PendingRewrite struct {
+	FilePath string
+	Content  string
+}
+
+// GeminiResponseMsg carries the AI response back to the TUI from the async call.
+type GeminiResponseMsg struct {
+	Response string
+	Err      error
+}
+
 type AgentModel struct {
-	viewport    viewport.Model
-	textarea    textarea.Model
-	messages    []string
-	senderStyle lipgloss.Style
-	aiStyle     lipgloss.Style
-	width       int
-	height      int
-	config      config.AI
+	viewport       viewport.Model
+	textarea       textarea.Model
+	messages       []string
+	senderStyle    lipgloss.Style
+	aiStyle        lipgloss.Style
+	errorStyle     lipgloss.Style
+	width          int
+	height         int
+	config         config.AI
+	keys           config.Keys
+	waiting        bool
+	pendingRewrite *PendingRewrite
+	currentFile    string
 }
 
 // NewAgent creates a new AI agent model with the given configuration.
-func NewAgent(aiConfig config.AI) AgentModel {
+func NewAgent(aiConfig config.AI, keyConfig config.Keys) AgentModel {
 	ta := textarea.New()
-	ta.Placeholder = "Ask the AI agent..."
+	ta.Placeholder = "Ask Gemini about your code..."
 	ta.Focus()
 	ta.CharLimit = 0
 	ta.SetHeight(3)
 	ta.ShowLineNumbers = false
 
 	vp := viewport.New(0, 0)
-	vp.SetContent("Welcome to the AI Agent Tab!\nAsk me anything about your code.\n")
+
+	welcome := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Boba AI Agent") + "\n\n"
+	welcome += lipgloss.NewStyle().Foreground(ColorSubText).Render("Powered by Google Gemini\n")
+	welcome += lipgloss.NewStyle().Foreground(ColorSubText).Render("Ask questions about your code, request refactors,\n")
+	welcome += lipgloss.NewStyle().Foreground(ColorSubText).Render("or ask me to rewrite files.\n\n")
+	welcome += lipgloss.NewStyle().Foreground(ColorAccent).Render("Tips:\n")
+	welcome += lipgloss.NewStyle().Foreground(ColorSubText).Render("  • \"explain this code\" — analyzes the current file\n")
+	welcome += lipgloss.NewStyle().Foreground(ColorSubText).Render("  • \"refactor for readability\" — suggests improvements\n")
+	welcome += lipgloss.NewStyle().Foreground(ColorSubText).Render("  • \"rewrite <file>\" — proposes changes (requires approval)\n\n")
+	welcome += lipgloss.NewStyle().Foreground(ColorWarning).Render("Set GEMINI_API_KEY env var to enable AI features.\n")
+
+	vp.SetContent(welcome)
 
 	return AgentModel{
 		textarea:    ta,
@@ -40,7 +68,9 @@ func NewAgent(aiConfig config.AI) AgentModel {
 		messages:    []string{},
 		senderStyle: lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true),
 		aiStyle:     lipgloss.NewStyle().Foreground(ColorSuccess),
+		errorStyle:  lipgloss.NewStyle().Foreground(ColorError),
 		config:      aiConfig,
+		keys:        keyConfig,
 	}
 }
 
@@ -58,25 +88,63 @@ func (m AgentModel) Update(msg tea.Msg) (AgentModel, tea.Cmd) {
 	m.viewport, vpCmd = m.viewport.Update(msg)
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyEnter:
-			if m.textarea.Value() == "" {
-				break
-			}
-			userMsg := m.senderStyle.Render("You: ") + m.textarea.Value()
-			m.messages = append(m.messages, userMsg)
-
+	case GeminiResponseMsg:
+		m.waiting = false
+		if msg.Err != nil {
+			errMsg := m.errorStyle.Render("Error: ") + msg.Err.Error()
+			m.messages = append(m.messages, errMsg)
+		} else {
 			aiName := m.config.Name
 			if aiName == "" {
-				aiName = "Agent"
+				aiName = "Gemini"
 			}
-			aiMsg := m.aiStyle.Render(aiName+": ") + "I received: " + m.textarea.Value()
+			aiMsg := m.aiStyle.Render(aiName+": ") + msg.Response
 			m.messages = append(m.messages, aiMsg)
+		}
+		m.viewport.SetContent(strings.Join(m.messages, "\n\n"))
+		m.viewport.GotoBottom()
 
-			m.viewport.SetContent(strings.Join(m.messages, "\n"))
+	case tea.KeyMsg:
+		// Handle pending rewrite approval
+		if m.pendingRewrite != nil {
+			switch msg.String() {
+			case "y", "Y":
+				// User approved the rewrite
+				m.messages = append(m.messages,
+					m.aiStyle.Render("Rewrite approved — file saved: ")+m.pendingRewrite.FilePath)
+				m.pendingRewrite = nil
+				m.viewport.SetContent(strings.Join(m.messages, "\n\n"))
+				m.viewport.GotoBottom()
+				return m, tea.Batch(tiCmd, vpCmd)
+			case "n", "N":
+				m.messages = append(m.messages,
+					m.errorStyle.Render("Rewrite rejected"))
+				m.pendingRewrite = nil
+				m.viewport.SetContent(strings.Join(m.messages, "\n\n"))
+				m.viewport.GotoBottom()
+				return m, tea.Batch(tiCmd, vpCmd)
+			}
+			return m, tea.Batch(tiCmd, vpCmd)
+		}
+
+		switch msg.String() {
+		case m.keys.AgentSend:
+			if m.textarea.Value() == "" || m.waiting {
+				break
+			}
+			userInput := m.textarea.Value()
+			userMsg := m.senderStyle.Render("You: ") + userInput
+			m.messages = append(m.messages, userMsg)
+
+			// Send to Gemini API
+			m.waiting = true
+			waitMsg := StyleDim.Render("⏳ Waiting for Gemini response...")
+			m.messages = append(m.messages, waitMsg)
+			m.viewport.SetContent(strings.Join(m.messages, "\n\n"))
 			m.textarea.Reset()
 			m.viewport.GotoBottom()
+
+			return m, tea.Batch(tiCmd, vpCmd, sendToGemini(userInput, m.currentFile))
 		}
 	}
 
@@ -84,10 +152,20 @@ func (m AgentModel) Update(msg tea.Msg) (AgentModel, tea.Cmd) {
 }
 
 func (m AgentModel) View() string {
+	var statusLine string
+	if m.waiting {
+		statusLine = StyleDim.Render("Generating...")
+	} else if m.pendingRewrite != nil {
+		statusLine = StyleModeCommand.Render(" APPROVE REWRITE? [y/n] ") + " " + m.pendingRewrite.FilePath
+	} else {
+		statusLine = ""
+	}
+
 	return StyleAgent.Render(
 		fmt.Sprintf(
-			"%s\n\n%s",
+			"%s\n%s\n%s",
 			m.viewport.View(),
+			statusLine,
 			m.textarea.View(),
 		),
 	)
@@ -98,5 +176,10 @@ func (m *AgentModel) SetSize(w, h int) {
 	m.height = h
 	m.textarea.SetWidth(w)
 	m.viewport.Width = w
-	m.viewport.Height = h - m.textarea.Height() - 2
+	m.viewport.Height = h - m.textarea.Height() - 4
+}
+
+// SetCurrentFile tells the agent what file is currently open in the editor.
+func (m *AgentModel) SetCurrentFile(path string) {
+	m.currentFile = path
 }

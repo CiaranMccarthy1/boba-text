@@ -25,6 +25,22 @@ type Keys struct {
 	FocusAgent string `toml:"focus_agent"`
 	CycleFocus string `toml:"cycle_focus"`
 	Quit       string `toml:"quit"`
+
+	TreeUp       string `toml:"tree_up"`
+	TreeUpAlt    string `toml:"tree_up_alt"`
+	TreeDown     string `toml:"tree_down"`
+	TreeDownAlt  string `toml:"tree_down_alt"`
+	TreeOpen     string `toml:"tree_open"`
+	TreeBack     string `toml:"tree_back"`
+	TreeBackAlt  string `toml:"tree_back_alt"`
+	TreeBackAlt2 string `toml:"tree_back_alt_2"`
+
+	EditorInsertMode  string `toml:"editor_insert_mode"`
+	EditorCommandMode string `toml:"editor_command_mode"`
+	EditorNormalMode  string `toml:"editor_normal_mode"`
+	EditorCommandRun  string `toml:"editor_command_run"`
+
+	AgentSend string `toml:"agent_send"`
 }
 
 type AI struct {
@@ -64,10 +80,26 @@ func DefaultConfig() Config {
 			FocusAgent: "ctrl+a",
 			CycleFocus: "tab",
 			Quit:       "ctrl+c",
+
+			TreeUp:       "up",
+			TreeUpAlt:    "k",
+			TreeDown:     "down",
+			TreeDownAlt:  "j",
+			TreeOpen:     "enter",
+			TreeBack:     "backspace",
+			TreeBackAlt:  "h",
+			TreeBackAlt2: "left",
+
+			EditorInsertMode:  "i",
+			EditorCommandMode: ":",
+			EditorNormalMode:  "esc",
+			EditorCommandRun:  "enter",
+
+			AgentSend: "enter",
 		},
-		AI: AI{
-			Name:  "Agent",
-			Model: "default",
+	AI: AI{
+			Name:  "Gemini",
+			Model: "gemini-2.0-flash",
 		},
 		Commands: Commands{
 			Save: []string{"w", "s", "save", "write"},

@@ -1,58 +1,128 @@
-# Boba Text 
+# 🧋 Boba Text
 
-A modern, Vim-inspired terminal code editor with a built-in AI agent. Built with Go, Bubble Tea, and Lipgloss.
-
+A modern, **Neovim-inspired** terminal code editor with a built-in **Gemini AI agent**. Built with Go, Bubble Tea, and Lipgloss.
 
 ## Features
 
-- **Neon/Dark Theme**: A sleek interface with pink, purple, and neon blue accents.
-- **Vim-like Editing**: Modal editing with Normal and Insert modes.
-- **File Tree**: Collapsible sidebar for navigating your project.
-- **AI Agent**: Dedicated tab for chatting with an AI assistant about your code.
-- **Command Bar**: Save files and quit using `:w`, `:s`, `:q`.
-- **Instant Startup**: Pre-compiled binary execution for zero-latency launch.
+- **Neovim-Style Modal Editing** — Normal, Insert, Command, Search, and Visual modes with proper Vim keybindings
+- **Vim Motions** — `h/j/k/l`, `w/b`, `0/$`, `G`, `o/O`, `A/I`, and more
+- **Command Mode** — `:w`, `:q`, `:wq`, `:q!`, `:e <file>`, `:<line>` jump
+- **Live Search** — `/` to search, `n`/`N` to navigate matches
+- **File Tree with Icons** — Collapsible sidebar with filetype icons and sorted entries
+- **Gemini AI Agent** — Chat with Google Gemini about your code, request refactors, and approve AI-generated file rewrites
+- **Neovim-Style Status Line** — lualine-inspired bar showing mode, filename, modified state, and filetype
+- **Welcome Screen** — ASCII art splash on startup (like alpha.nvim)
+- **Configurable** — Full TOML config for colors, keys, AI, and commands
+- **Instant Startup** — Pre-compiled binary for zero-latency launch
 
 ## Quick Start
 
-**Windows:**
+**Build & Run:**
 
-Run the included shortcut script to build (if needed) and launch instantly:
+```powershell
+go build -o boba-text.exe .
+./boba-text.exe
+```
+
+**Or use the batch shortcut (Windows):**
 
 ```powershell
 .\boba
 ```
 
-**Manual Build:**
+## AI Agent Setup
+
+Set your Gemini API key to enable the built-in AI assistant:
 
 ```powershell
-go build -o boba-text.exe main.go
-./boba-text.exe
+$env:GEMINI_API_KEY = "your-api-key-here"
 ```
+
+Then press `Ctrl+A` to open the AI Agent tab and chat with Gemini about your code. The agent automatically includes the current file as context.
+
+**AI capabilities:**
+- Ask questions about your code
+- Request refactors and improvements
+- Propose file rewrites (with approval workflow)
 
 ## Keybindings
 
-| Context | Key | Action |
-| :--- | :--- | :--- |
-| **Global** | `Ctrl+b` | Toggle File Tree sidebar |
-| **Global** | `Ctrl+e` | Focus / Open File Tree |
-| **Global** | `Ctrl+a` | Focus AI Agent |
-| **Global** | `Tab` | Cycle focus (Tree -> Editor -> Agent) |
-| **Global** | `Ctrl+c` / `q` | Quit |
-| **File Tree** | `j` / `k` | Navigate Down / Up |
-| **File Tree** | `Enter` | Open File / Enter Dir / Go Up (`..`) |
-| **Editor** | `i` | Enter **Insert Mode** |
-| **Editor** | `Esc` | Enter **Normal Mode** |
-| **Editor** | `:` | Open **Command Bar** (`:w` to save) |
-| **Agent** | `Enter` | Send message to AI |
+### Global
 
-## Stack
+| Key | Action |
+| :--- | :--- |
+| `Ctrl+T` | Toggle File Tree sidebar |
+| `Ctrl+E` | Focus / Toggle File Tree |
+| `Ctrl+A` | Focus AI Agent |
+| `Tab` | Cycle focus (Tree → Editor → Agent) |
+| `Ctrl+C` | Quit |
+
+### Editor — Normal Mode
+
+| Key | Action |
+| :--- | :--- |
+| `h/j/k/l` | Move cursor Left / Down / Up / Right |
+| `w` / `b` | Word forward / backward |
+| `0` / `$` | Line start / end |
+| `G` | Go to end of file |
+| `i` | Enter **Insert Mode** |
+| `I` / `A` | Insert at line start / end |
+| `o` / `O` | Open line below / above |
+| `/` | Enter **Search Mode** |
+| `:` | Enter **Command Mode** |
+| `p` | Paste yanked text |
+| `x` | Delete character |
+
+### Editor — Insert Mode
+
+| Key | Action |
+| :--- | :--- |
+| `Esc` | Return to Normal Mode |
+| *(any)* | Type into the buffer |
+
+### Editor — Command Mode
+
+| Command | Action |
+| :--- | :--- |
+| `:w` / `:s` | Save file |
+| `:q` | Quit |
+| `:wq` / `:x` | Save and quit |
+| `:q!` | Force quit (discard changes) |
+| `:e <file>` | Open a file |
+| `:<number>` | Jump to line number |
+
+### Editor — Search Mode
+
+| Key | Action |
+| :--- | :--- |
+| `Enter` | Execute search |
+| `n` / `N` | Next / Previous match (Normal Mode) |
+| `Esc` | Cancel search |
+
+### File Tree
+
+| Key | Action |
+| :--- | :--- |
+| `j` / `k` | Navigate Down / Up |
+| `Enter` | Open file / Enter directory |
+| `h` / `Backspace` | Go to parent directory |
+
+### AI Agent
+
+| Key | Action |
+| :--- | :--- |
+| `Enter` | Send message to Gemini |
+| `y` / `n` | Approve / Reject file rewrite |
+
+## 🛠 Stack
 
 - **Language**: [Go](https://go.dev/)
 - **TUI Framework**: [Bubble Tea](https://github.com/charmbracelet/bubbletea)
 - **Styling**: [Lipgloss](https://github.com/charmbracelet/lipgloss)
 - **Components**: [Bubbles](https://github.com/charmbracelet/bubbles)
+- **AI**: [Google Gemini API](https://ai.google.dev/)
 
-## ⚙️ Configuration
+## Configuration
 
 Create a `config.toml` (or `~/.boba-config.toml`) to customize colors, keys, AI, and commands:
 
@@ -62,13 +132,37 @@ primary = "#F25D94"
 text = "#FAFAFA"
 
 [keys]
-toggle_tree = "ctrl+b"
+toggle_tree = "ctrl+t"
+focus_tree = "ctrl+e"
 focus_agent = "ctrl+a"
+cycle_focus = "tab"
+quit = "ctrl+c"
+
+tree_up = "up"
+tree_up_alt = "k"
+tree_down = "down"
+tree_down_alt = "j"
+tree_open = "enter"
+tree_back = "backspace"
+tree_back_alt = "h"
+tree_back_alt_2 = "left"
+
+editor_insert_mode = "i"
+editor_command_mode = ":"
+editor_normal_mode = "esc"
+editor_command_run = "enter"
+
+agent_send = "enter"
 
 [ai]
-name = "BobaBot"
+name = "Gemini"
+model = "gemini-2.0-flash"
 
 [commands]
 save = ["w", "s", "save"]
 quit = ["q", "quit"]
 ```
+
+## License
+
+MIT

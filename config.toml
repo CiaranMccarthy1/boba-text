@@ -14,6 +14,36 @@ focus_tree = "ctrl+e"
 
 focus_agent = "ctrl+a"
 
+cycle_focus = "tab"
+
+quit = "ctrl+c"
+
+tree_up = "up"
+
+tree_up_alt = "k"
+
+tree_down = "down"
+
+tree_down_alt = "j"
+
+tree_open = "enter"
+
+tree_back = "backspace"
+
+tree_back_alt = "h"
+
+tree_back_alt_2 = "left"
+
+editor_insert_mode = "i"
+
+editor_command_mode = ":"
+
+editor_normal_mode = "esc"
+
+editor_command_run = "enter"
+
+agent_send = "enter"
+
 
 
 [ai]

@@ -5,9 +5,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
+	"github.com/CiaranMccarthy1/boba-text/pkg/config"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // parentDirEntry implements os.DirEntry for the ".." parent directory entry.
@@ -32,20 +35,31 @@ type FileTreeModel struct {
 	selected string
 	width    int
 	height   int
+	keys     config.Keys
 }
 
 // NewFileTree creates a new file tree model starting at the given path.
-func NewFileTree(startPath string) FileTreeModel {
+func NewFileTree(startPath string, keyConfig config.Keys) FileTreeModel {
 	m := FileTreeModel{
 		path: startPath,
+		keys: keyConfig,
 	}
 	m.loadFiles()
 	return m
 }
 
 // loadFiles loads directory entries from the current path and adds parent entry if not at root.
+// Sorts directories first, then files alphabetically.
 func (m *FileTreeModel) loadFiles() {
 	entries, _ := os.ReadDir(m.path)
+
+	// Sort: directories first, then files, alphabetical within each group
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].IsDir() != entries[j].IsDir() {
+			return entries[i].IsDir()
+		}
+		return strings.ToLower(entries[i].Name()) < strings.ToLower(entries[j].Name())
+	})
 
 	parent := filepath.Dir(m.path)
 	if parent != m.path {
@@ -67,15 +81,15 @@ func (m FileTreeModel) Update(msg tea.Msg) (FileTreeModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "up", "k":
+		case m.keys.TreeUp, m.keys.TreeUpAlt:
 			if m.cursor > 0 {
 				m.cursor--
 			}
-		case "down", "j":
+		case m.keys.TreeDown, m.keys.TreeDownAlt:
 			if m.cursor < len(m.files)-1 {
 				m.cursor++
 			}
-		case "enter":
+		case m.keys.TreeOpen:
 			if len(m.files) == 0 {
 				break
 			}
@@ -99,7 +113,7 @@ func (m FileTreeModel) Update(msg tea.Msg) (FileTreeModel, tea.Cmd) {
 					return OpenFileMsg{Path: newPath}
 				}
 			}
-		case "backspace", "left", "h":
+		case m.keys.TreeBack, m.keys.TreeBackAlt, m.keys.TreeBackAlt2:
 			parent := filepath.Dir(m.path)
 			if parent != m.path {
 				m.path = parent
@@ -111,25 +125,99 @@ func (m FileTreeModel) Update(msg tea.Msg) (FileTreeModel, tea.Cmd) {
 	return m, nil
 }
 
+// fileIcon returns an icon for the file based on its extension.
+func fileIcon(name string, isDir bool) string {
+	if isDir {
+		if name == ".." {
+			return "⮤"
+		}
+		return ""
+	}
+	ext := strings.ToLower(filepath.Ext(name))
+	switch ext {
+	case ".go":
+		return ""
+	case ".js", ".jsx":
+		return ""
+	case ".ts", ".tsx":
+		return ""
+	case ".py":
+		return ""
+	case ".rs":
+		return ""
+	case ".md":
+		return ""
+	case ".json":
+		return ""
+	case ".toml", ".yaml", ".yml":
+		return ""
+	case ".html":
+		return ""
+	case ".css":
+		return ""
+	case ".sh", ".bat", ".ps1":
+		return ""
+	case ".git", ".gitignore":
+		return ""
+	case ".jpg", ".jpeg", ".png", ".gif", ".svg":
+		return ""
+	case ".txt":
+		return ""
+	case ".mod":
+		return ""
+	default:
+		return ""
+	}
+}
+
 // View renders the file tree as a string.
 func (m FileTreeModel) View() string {
 	var s strings.Builder
 
-	s.WriteString(StyleDim.Render(fmt.Sprintf("DIR: %s", m.path)) + "\n\n")
+	// Shortened path display
+	dirName := filepath.Base(m.path)
+	s.WriteString(StyleBold.Render("  "+dirName) + "\n")
+	sepWidth := m.width - 4
+	if sepWidth < 1 {
+		sepWidth = 1
+	}
+	s.WriteString(StyleDim.Render(" " + strings.Repeat("─", sepWidth)) + "\n")
 
-	for i, f := range m.files {
+	visible := m.height - 4
+	if visible < 1 {
+		visible = 1
+	}
+
+	// Scrolling window
+	start := 0
+	if m.cursor >= visible {
+		start = m.cursor - visible + 1
+	}
+	end := start + visible
+	if end > len(m.files) {
+		end = len(m.files)
+	}
+
+	for i := start; i < end; i++ {
+		f := m.files[i]
+		icon := fileIcon(f.Name(), f.IsDir())
+		name := f.Name()
+		if f.IsDir() && name != ".." {
+			name += "/"
+		}
+
 		if m.cursor == i {
-			line := fmt.Sprintf("%s %s", "➜", f.Name())
-			if f.IsDir() {
-				line += "/"
-			}
+			line := fmt.Sprintf(" ➜ %s %s", icon, name)
 			s.WriteString(StyleSelected.Render(line) + "\n")
 		} else {
-			line := fmt.Sprintf("  %s", f.Name())
+			var iconStyle lipgloss.Style
 			if f.IsDir() {
-				line += "/"
+				iconStyle = StyleDirIcon
+			} else {
+				iconStyle = StyleFileIcon
 			}
-			s.WriteString(StyleDim.Render(line) + "\n")
+			line := fmt.Sprintf("   %s %s", iconStyle.Render(icon), StyleDim.Render(name))
+			s.WriteString(line + "\n")
 		}
 	}
 
