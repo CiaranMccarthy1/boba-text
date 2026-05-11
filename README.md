@@ -1,19 +1,19 @@
-# 🧋 Boba Text
+# Boba Text
 
 A modern, **Neovim-inspired** terminal code editor with a built-in **Gemini AI agent**. Built with Go, Bubble Tea, and Lipgloss.
 
 ## Features
 
-- **Neovim-Style Modal Editing** — Normal, Insert, Command, Search, and Visual modes with proper Vim keybindings
-- **Vim Motions** — `h/j/k/l`, `w/b`, `0/$`, `G`, `o/O`, `A/I`, and more
-- **Command Mode** — `:w`, `:q`, `:wq`, `:q!`, `:e <file>`, `:<line>` jump
-- **Live Search** — `/` to search, `n`/`N` to navigate matches
-- **File Tree with Icons** — Collapsible sidebar with filetype icons and sorted entries
-- **Gemini AI Agent** — Chat with Google Gemini about your code, request refactors, and approve AI-generated file rewrites
-- **Neovim-Style Status Line** — lualine-inspired bar showing mode, filename, modified state, and filetype
-- **Welcome Screen** — ASCII art splash on startup (like alpha.nvim)
-- **Configurable** — Full TOML config for colors, keys, AI, and commands
-- **Instant Startup** — Pre-compiled binary for zero-latency launch
+- **Neovim-Style Modal Editing** - Normal, Insert, Command, Search, and Visual modes with proper Vim keybindings
+- **Vim Motions** - `h/j/k/l`, `w/b`, `0/$`, `G`, `o/O`, `A/I`, and more
+- **Command Mode** - `:w`, `:q`, `:wq`, `:q!`, `:e <file>`, `:<line>` jump
+- **Live Search** - `/` to search, `n`/`N` to navigate matches
+- **File Tree with Icons** - Collapsible sidebar with filetype icons and sorted entries
+- **Gemini AI Agent** - Chat with Google Gemini about your code, request refactors, and approve AI-generated file rewrites
+- **Neovim-Style Status Line** - lualine-inspired bar showing mode, filename, modified state, and filetype
+- **Welcome Screen** - ASCII art splash on startup (like alpha.nvim)
+- **Configurable** - Full TOML config for colors, keys, AI, and commands
+- **Instant Startup** - Pre-compiled binary for zero-latency launch
 
 ## Quick Start
 
@@ -30,20 +30,13 @@ go build -o boba-text.exe .
 .\boba
 ```
 
-## AI Agent Setup
+## AI Agent Setup - In progress
 
 Set your Gemini API key to enable the built-in AI assistant:
 
 ```powershell
 $env:GEMINI_API_KEY = "your-api-key-here"
 ```
-
-Then press `Ctrl+A` to open the AI Agent tab and chat with Gemini about your code. The agent automatically includes the current file as context.
-
-**AI capabilities:**
-- Ask questions about your code
-- Request refactors and improvements
-- Propose file rewrites (with approval workflow)
 
 ## Keybindings
 
@@ -57,7 +50,7 @@ Then press `Ctrl+A` to open the AI Agent tab and chat with Gemini about your cod
 | `Tab` | Cycle focus (Tree → Editor → Agent) |
 | `Ctrl+C` | Quit |
 
-### Editor — Normal Mode
+### Editor - Normal Mode
 
 | Key | Action |
 | :--- | :--- |
@@ -73,14 +66,14 @@ Then press `Ctrl+A` to open the AI Agent tab and chat with Gemini about your cod
 | `p` | Paste yanked text |
 | `x` | Delete character |
 
-### Editor — Insert Mode
+### Editor - Insert Mode
 
 | Key | Action |
 | :--- | :--- |
 | `Esc` | Return to Normal Mode |
 | *(any)* | Type into the buffer |
 
-### Editor — Command Mode
+### Editor - Command Mode
 
 | Command | Action |
 | :--- | :--- |
@@ -91,7 +84,7 @@ Then press `Ctrl+A` to open the AI Agent tab and chat with Gemini about your cod
 | `:e <file>` | Open a file |
 | `:<number>` | Jump to line number |
 
-### Editor — Search Mode
+### Editor - Search Mode
 
 | Key | Action |
 | :--- | :--- |
@@ -114,7 +107,7 @@ Then press `Ctrl+A` to open the AI Agent tab and chat with Gemini about your cod
 | `Enter` | Send message to Gemini |
 | `y` / `n` | Approve / Reject file rewrite |
 
-## 🛠 Stack
+## Stack
 
 - **Language**: [Go](https://go.dev/)
 - **TUI Framework**: [Bubble Tea](https://github.com/charmbracelet/bubbletea)
@@ -135,11 +128,11 @@ text = "#FFFFFF"
 
 [keys]
 toggle_tree = "ctrl+t"
-<<<<<<< HEAD
 focus_tree = "ctrl+e"
 focus_agent = "ctrl+a"
 cycle_focus = "tab"
 quit = "ctrl+c"
+save = "ctrl+s"
 
 tree_up = "up"
 tree_up_alt = "k"
@@ -156,9 +149,6 @@ editor_normal_mode = "esc"
 editor_command_run = "enter"
 
 agent_send = "enter"
-=======
-save = "ctrl+s"
->>>>>>> ed67094bea9b6958e68c5cfa45b46b5675b0f73f
 
 [ai]
 name = "Gemini"
